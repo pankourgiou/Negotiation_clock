@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Negotiator's Clock</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #d4a843;
+    --gold-light: #f0c855;
+    --cream: #ffffff;
+    --ink: #16120e;
+    --rust: #c0442e;
+    --sage: #5aaa50;
+    --warm-gray: #b0a898;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background-color: #1e1810;
+    color: var(--cream);
+    font-family: 'Cormorant Garamond', serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(212,168,67,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(192,68,46,0.07) 0%, transparent 50%);
+  }
+
+  /* GRAIN OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.15;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    grid-template-rows: auto 1fr;
+    min-height: 100vh;
+    gap: 0;
+  }
+
+  /* ---- HEADER ---- */
+  .header {
+    grid-column: 1 / -1;
+    padding: 2rem 3rem 1rem;
+    border-bottom: 1px solid rgba(212,168,67,0.4);
+    display: flex;
+    align-items: baseline;
+    gap: 2rem;
+  }
+
+  .header-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--gold-light);
+    opacity: 1;
+  }
+
+  .header-sub {
+    font-size: 0.85rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #c8bfaf;
+  }
+
+  /* ---- CLOCK SECTION ---- */
+  .clock-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    position: relative;
+  }
+
+  .clock-container {
+    position: relative;
+    width: 340px;
+    height: 340px;
+    margin-bottom: 2.5rem;
+  }
+
+  .clock-face {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px solid rgba(212,168,67,0.7);
+    position: relative;
+    background:
+      radial-gradient(circle at 40% 35%, rgba(212,168,67,0.1) 0%, transparent 55%),
+      radial-gradient(circle at 60% 70%, rgba(30,24,16,0.9) 0%, #1e1810 100%);
+    box-shadow:
+      0 0 0 6px rgba(212,168,67,0.06),
+      0 0 0 8px rgba(212,168,67,0.15),
+      0 0 80px rgba(212,168,67,0.12),
+      inset 0 0 60px rgba(0,0,0,0.4);
+  }
+
+  /* Hour markers */
+  .tick {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: 0 0;
+    width: 1px;
+  }
+  .tick-major { background: rgba(201,168,76,0.7); height: 18px; }
+  .tick-minor { background: rgba(201,168,76,0.25); height: 8px; width: 1px; }
+
+  /* Roman numerals */
+  .numeral {
+    position: absolute;
+    font-family: 'Playfair Display', serif;
+    font-size: 0.85rem;
+    color: rgba(201,168,76,0.6);
+    transform: translate(-50%, -50%);
+  }
+
+  /* Hands */
+  .hand {
+    position: absolute;
+    bottom: 50%;
+    left: 50%;
+    transform-origin: 50% 100%;
+    border-radius: 4px 4px 0 0;
+  }
+  .hour-hand {
+    width: 4px;
+    height: 90px;
+    margin-left: -2px;
+    background: linear-gradient(to top, var(--gold-light), rgba(212,168,67,0.7));
+    transform: rotate(0deg);
+    box-shadow: 0 0 8px rgba(212,168,67,0.5);
+  }
+  .minute-hand {
+    width: 3px;
+    height: 120px;
+    margin-left: -1.5px;
+    background: linear-gradient(to top, #ffffff, rgba(255,255,255,0.6));
+    transform: rotate(0deg);
+    box-shadow: 0 0 6px rgba(255,255,255,0.3);
+  }
+  .second-hand {
+    width: 2px;
+    height: 135px;
+    margin-left: -1px;
+    background: linear-gradient(to top, var(--rust), rgba(192,68,46,0.5));
+    transform: rotate(0deg);
+    transition: transform 0.15s cubic-bezier(0.4, 2.5, 0.5, 1);
+    box-shadow: 0 0 6px rgba(192,68,46,0.6);
+  }
+  .second-hand::after {
+    content: '';
+    position: absolute;
+    bottom: -20px;
+    left: -4px;
+    width: 10px;
+    height: 25px;
+    background: var(--rust);
+    border-radius: 2px;
+  }
+
+  .center-dot {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: var(--gold-light);
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    box-shadow: 0 0 12px rgba(212,168,67,0.9);
+  }
+
+  .digital-time {
+    font-family: 'Playfair Display', serif;
+    font-size: 3.2rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #ffffff;
+    text-align: center;
+    margin-bottom: 0.4rem;
+    text-shadow: 0 0 30px rgba(212,168,67,0.4);
+  }
+
+  .digital-date {
+    font-size: 0.9rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: #c8bfaf;
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  /* Technique of the hour */
+  .featured-technique {
+    width: 100%;
+    max-width: 420px;
+    border: 1px solid rgba(212,168,67,0.45);
+    padding: 1.5rem 2rem;
+    position: relative;
+    background: rgba(212,168,67,0.06);
+  }
+
+  .featured-technique::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 2rem;
+    width: 60px;
+    height: 2px;
+    background: var(--gold-light);
+  }
+
+  .featured-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--gold-light);
+    margin-bottom: 0.75rem;
+  }
+
+  .featured-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
+  }
+
+  .featured-desc {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: #d8d0c4;
+    font-style: italic;
+  }
+
+  /* ---- SIDEBAR ---- */
+  .sidebar {
+    border-left: 1px solid rgba(212,168,67,0.25);
+    overflow-y: auto;
+    padding: 2rem 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(212,168,67,0.4) transparent;
+  }
+
+  .sidebar-heading {
+    font-size: 0.65rem;
+    letter-spacing: 0.45em;
+    text-transform: uppercase;
+    color: var(--gold-light);
+    padding: 0 2rem 1.25rem;
+    border-bottom: 1px solid rgba(212,168,67,0.2);
+    margin-bottom: 0.5rem;
+  }
+
+  .technique-card {
+    padding: 1.25rem 2rem;
+    border-bottom: 1px solid rgba(212,168,67,0.1);
+    cursor: pointer;
+    transition: background 0.25s;
+    position: relative;
+  }
+
+  .technique-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--gold-light);
+    transform: scaleY(0);
+    transition: transform 0.25s;
+  }
+
+  .technique-card:hover {
+    background: rgba(212,168,67,0.08);
+  }
+
+  .technique-card:hover::before,
+  .technique-card.active::before {
+    transform: scaleY(1);
+  }
+
+  .technique-card.active {
+    background: rgba(212,168,67,0.1);
+  }
+
+  .card-category {
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-bottom: 0.3rem;
+    font-weight: 600;
+  }
+  .cat-open { color: #72d668; }
+  .cat-close { color: #e05a42; }
+  .cat-leverage { color: #a090e0; }
+  .cat-empathy { color: #55bcdc; }
+  .cat-tactic { color: var(--gold-light); }
+
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 0.3rem;
+  }
+
+  .card-preview {
+    font-size: 0.85rem;
+    color: #b8b0a0;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Progress ring */
+  .progress-ring {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+    pointer-events: none;
+  }
+  .progress-ring circle {
+    fill: none;
+    stroke: rgba(212,168,67,0.18);
+    stroke-width: 1.5;
+  }
+  .progress-ring .progress-arc {
+    stroke: rgba(212,168,67,0.7);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s linear;
+  }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .featured-technique { animation: fadeUp 0.5s ease forwards; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.9; }
+  }
+  .center-dot { animation: pulse 2s ease-in-out infinite; }
+
+  /* Scrollbar */
+  .sidebar::-webkit-scrollbar { width: 3px; }
+  .sidebar::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.2); border-radius: 2px; }
+
+  @media (max-width: 700px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { border-left: none; border-top: 1px solid rgba(201,168,76,0.1); }
+    .clock-section { padding: 2rem 1rem; }
+    .clock-container { width: 260px; height: 260px; }
+    .hour-hand { height: 65px; }
+    .minute-hand { height: 90px; }
+    .second-hand { height: 100px; }
+    .digital-time { font-size: 2.4rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <header class="header">
+    <span class="header-title">The Negotiator's Clock</span>
+    <span class="header-sub">Every moment, a new edge</span>
+  </header>
+
+  <main class="clock-section">
+
+    <div class="clock-container">
+      <div class="clock-face" id="clockFace">
+        <svg class="progress-ring" viewBox="0 0 340 340">
+          <circle cx="170" cy="170" r="165"/>
+          <circle class="progress-arc" id="progressArc" cx="170" cy="170" r="165"
+            stroke-dasharray="1036.7" stroke-dashoffset="1036.7"/>
+        </svg>
+      </div>
+      <div class="center-dot"></div>
+      <div class="hand hour-hand" id="hourHand"></div>
+      <div class="hand minute-hand" id="minuteHand"></div>
+      <div class="hand second-hand" id="secondHand"></div>
+    </div>
+
+    <div class="digital-time" id="digitalTime">00:00:00</div>
+    <div class="digital-date" id="digitalDate">Monday, January 1</div>
+
+    <div class="featured-technique" id="featuredTechnique">
+      <div class="featured-label">⬡ Technique of the Moment</div>
+      <div class="featured-name" id="featName">Loading…</div>
+      <div class="featured-desc" id="featDesc"></div>
+    </div>
+
+  </main>
+
+  <aside class="sidebar">
+    <div class="sidebar-heading">All Techniques</div>
+    <div id="techniqueList"></div>
+  </aside>
+
+</div>
+
+<script>
+const techniques = [
+  {
+    category: "Opening", catClass: "cat-open",
+    title: "The Anchor Drop",
+    short: "Set the first number high — it pulls the entire negotiation toward you.",
+    full: "The first number stated becomes a psychological anchor. Open boldly: studies show the anchor influences final outcomes far more than any subsequent move. Whoever names the price first defines the battlefield."
+  },
+  {
+    category: "Empathy", catClass: "cat-empathy",
+    title: "Tactical Empathy",
+    short: "Name their emotions before they do. It disarms, not weakens.",
+    full: "Label what you sense the other side is feeling: 'It seems like you're concerned about…' Acknowledgment reduces defensive posturing and earns trust. This is not sympathy — it's a precision instrument."
+  },
+  {
+    category: "Closing", catClass: "cat-close",
+    title: "The Flinch",
+    short: "React visibly to their offer. Silence and surprise are powerful signals.",
+    full: "When given an offer, pause visibly — wince, breathe, look pained. This nonverbal cue signals the offer is unacceptable without saying a word, often prompting immediate concessions before any counter is even made."
+  },
+  {
+    category: "Leverage", catClass: "cat-leverage",
+    title: "BATNA Clarity",
+    short: "Know your Best Alternative. It's the source of all negotiating power.",
+    full: "Your Best Alternative To a Negotiated Agreement is your true leverage. The stronger your BATNA, the more confidently you can walk away — and paradoxically, the more concessions the other side will make to keep you at the table."
+  },
+  {
+    category: "Tactic", catClass: "cat-tactic",
+    title: "The Calibrated Question",
+    short: "'How am I supposed to do that?' — Let them solve your problem for you.",
+    full: "Replace 'no' with open-ended 'How' and 'What' questions. 'What would you suggest I do?' forces the other party to become your problem-solver. Their investment in the solution increases commitment."
+  },
+  {
+    category: "Empathy", catClass: "cat-empathy",
+    title: "Mirroring",
+    short: "Repeat their last 3 words as a question. Watch them open up.",
+    full: "Repeat the last 1–3 words with a slight upward inflection. People feel compelled to elaborate and clarify. You gather intelligence effortlessly while making them feel profoundly understood."
+  },
+  {
+    category: "Opening", catClass: "cat-open",
+    title: "The Ackermann Method",
+    short: "65 → 85 → 95 → 100. Odd numbers signal calculated precision.",
+    full: "Start at 65% of your goal. Increase in three steps: 85%, 95%, then 100%. Use precise, non-round numbers like $37,893 — they imply careful research. Offer a non-monetary item on the final bid to signal you've reached your absolute limit."
+  },
+  {
+    category: "Leverage", catClass: "cat-leverage",
+    title: "Strategic Silence",
+    short: "After an offer, say nothing. Discomfort drives concessions.",
+    full: "Silence is an underused weapon. After naming your number or asking a question, go quiet and stay quiet. Most people fill silence reflexively — often with concessions. Comfortable silence is a rare and powerful skill."
+  },
+  {
+    category: "Tactic", catClass: "cat-tactic",
+    title: "The Deadline Effect",
+    short: "Real or implied deadlines trigger rapid movement in negotiations.",
+    full: "Deadlines create urgency and reduce overthinking. Introducing a credible time limit ('I need to decide by Thursday') compresses the negotiation and pushes the other side toward decisive action — often in your favor."
+  },
+  {
+    category: "Closing", catClass: "cat-close",
+    title: "'That's Right' vs 'You're Right'",
+    short: "'You're right' means they want you to stop. 'That's right' means they believe it.",
+    full: "When someone says 'you're right,' they're signaling disengagement. When they say 'that's right,' they have genuinely recognized something true. Work toward this response — it signals a breakthrough in understanding and opens the path to agreement."
+  },
+  {
+    category: "Opening", catClass: "cat-open",
+    title: "The Loss Frame",
+    short: "People fight harder to avoid loss than to achieve gain. Frame accordingly.",
+    full: "Prospect theory: losses loom twice as large as equivalent gains. Reframe your offer around what they stand to lose by not accepting, not what they gain by saying yes. 'You'll be leaving $40,000 on the table' hits harder than 'you'll gain $40,000.'"
+  },
+  {
+    category: "Leverage", catClass: "cat-leverage",
+    title: "The Nibble",
+    short: "After the big win, ask for one small thing more. They'll usually say yes.",
+    full: "Just as agreement is reached, request a small additional concession: 'Could you throw in…?' After investing so heavily to close, the other party is psychologically inclined to concede on a seemingly minor point rather than reopen the entire deal."
+  }
+];
+
+// Build sidebar
+const list = document.getElementById('techniqueList');
+techniques.forEach((t, i) => {
+  const card = document.createElement('div');
+  card.className = 'technique-card';
+  card.id = `card-${i}`;
+  card.innerHTML = `
+    <div class="card-category ${t.catClass}">${t.category}</div>
+    <div class="card-title">${t.title}</div>
+    <div class="card-preview">${t.short}</div>
+  `;
+  card.addEventListener('click', () => showTechnique(i, true));
+  list.appendChild(card);
+});
+
+function showTechnique(i, manual) {
+  const t = techniques[i];
+  document.querySelectorAll('.technique-card').forEach(c => c.classList.remove('active'));
+  const card = document.getElementById(`card-${i}`);
+  if (card) card.classList.add('active');
+
+  const feat = document.getElementById('featuredTechnique');
+  feat.style.animation = 'none';
+  feat.offsetHeight;
+  feat.style.animation = 'fadeUp 0.4s ease forwards';
+
+  document.getElementById('featName').textContent = t.title;
+  document.getElementById('featDesc').textContent = t.full;
+  document.querySelector('.featured-label').textContent = `⬡ ${t.category}`;
+}
+
+// Clock
+function buildClockFace() {
+  const face = document.getElementById('clockFace');
+  const cx = 170, cy = 170, r = 148;
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('viewBox', '0 0 340 340');
+  svg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
+
+  const romans = ['XII','I','II','III','IV','V','VI','VII','VIII','IX','X','XI'];
+  for (let i = 0; i < 60; i++) {
+    const angle = (i * 6 - 90) * Math.PI / 180;
+    const isMajor = i % 5 === 0;
+    const r1 = r, r2 = isMajor ? r - 16 : r - 8;
+    const line = document.createElementNS(svgNS, 'line');
+    line.setAttribute('x1', cx + r1 * Math.cos(angle));
+    line.setAttribute('y1', cy + r1 * Math.sin(angle));
+    line.setAttribute('x2', cx + r2 * Math.cos(angle));
+    line.setAttribute('y2', cy + r2 * Math.sin(angle));
+    line.setAttribute('stroke', isMajor ? 'rgba(212,168,67,0.9)' : 'rgba(212,168,67,0.4)');
+    line.setAttribute('stroke-width', isMajor ? '2' : '1');
+    svg.appendChild(line);
+
+    if (isMajor) {
+      const nr = r - 30;
+      const text = document.createElementNS(svgNS, 'text');
+      text.setAttribute('x', cx + nr * Math.cos(angle));
+      text.setAttribute('y', cy + nr * Math.sin(angle));
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('dominant-baseline', 'central');
+      text.setAttribute('fill', 'rgba(212,168,67,0.85)');
+      text.setAttribute('font-family', 'Playfair Display, serif');
+      text.setAttribute('font-size', '12');
+      text.textContent = romans[i / 5];
+      svg.appendChild(text);
+    }
+  }
+  face.appendChild(svg);
+}
+
+buildClockFace();
+
+let lastMinute = -1;
+let lastSecond = -1;
+
+function updateClock() {
+  const now = new Date();
+  const h = now.getHours(), m = now.getMinutes(), s = now.getSeconds(), ms = now.getMilliseconds();
+
+  const secDeg = s * 6 + ms * 0.006;
+  const minDeg = m * 6 + s * 0.1;
+  const hourDeg = (h % 12) * 30 + m * 0.5;
+
+  document.getElementById('hourHand').style.transform = `rotate(${hourDeg}deg)`;
+  document.getElementById('minuteHand').style.transform = `rotate(${minDeg}deg)`;
+  document.getElementById('secondHand').style.transform = `rotate(${secDeg}deg)`;
+
+  // Progress arc (minute progress)
+  const minProgress = (m * 60 + s) / 3600;
+  const circumference = 2 * Math.PI * 165;
+  const arc = document.getElementById('progressArc');
+  arc.style.strokeDashoffset = circumference * (1 - minProgress);
+
+  // Digital
+  const hh = String(h).padStart(2, '0');
+  const mm = String(m).padStart(2, '0');
+  const ss = String(s).padStart(2, '0');
+  document.getElementById('digitalTime').textContent = `${hh}:${mm}:${ss}`;
+
+  // Date
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('digitalDate').textContent =
+    `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`;
+
+  // Rotate technique every minute
+  if (m !== lastMinute) {
+    lastMinute = m;
+    const idx = (h * 60 + m) % techniques.length;
+    showTechnique(idx, false);
+  }
+
+  requestAnimationFrame(updateClock);
+}
+
+// Initial technique
+showTechnique(0, false);
+updateClock();
+</script>
+</body>
+</html>
