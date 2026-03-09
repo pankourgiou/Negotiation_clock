@@ -1,0 +1,1 @@
+#This is the Negotiating techniques clock it's in .html and you will have to copy paste the code on your notepad and save it as .html then double click and you are ready to go! Communication is a negotiating technique--->Not the only negotiating technique.
